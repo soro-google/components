@@ -101,18 +101,23 @@ export function getMatAutocompleteMissingPanelError(): Error {
                'you\'re attempting to open it after the ngAfterContentInit hook.');
 }
 
+/**
+ * Autocomplete trigger IDs need to be unique across components, so this counter exists
+ * outside of the component definition.
+ */
+let _uniqueAutocompleteTriggerIdCounter = 0;
 
 @Directive({
   selector: `input[matAutocomplete], textarea[matAutocomplete]`,
   host: {
     'class': 'mat-autocomplete-trigger',
+    'aria-multiline': 'false',
+    '[id]': '_id',
     '[attr.autocomplete]': 'autocompleteAttribute',
-    '[attr.role]': 'autocompleteDisabled ? null : "combobox"',
+    '[attr.role]': 'autocompleteDisabled ? null : "textbox"',
     '[attr.aria-autocomplete]': 'autocompleteDisabled ? null : "list"',
+    '[attr.aria-controls]': 'autocompleteDisabled ? null : autocomplete.comboboxId',
     '[attr.aria-activedescendant]': '(panelOpen && activeOption) ? activeOption.id : null',
-    '[attr.aria-expanded]': 'autocompleteDisabled ? null : panelOpen.toString()',
-    '[attr.aria-owns]': '(autocompleteDisabled || !panelOpen) ? null : autocomplete?.id',
-    '[attr.aria-haspopup]': '!autocompleteDisabled',
     // Note: we use `focusin`, as opposed to `focus`, in order to open the panel
     // a little earlier. This avoids issues where IE delays the focusing of the input.
     '(focusin)': '_handleFocus()',
@@ -130,6 +135,9 @@ export class MatAutocompleteTrigger implements ControlValueAccessor, AfterViewIn
   private _componentDestroyed = false;
   private _autocompleteDisabled = false;
   private _scrollStrategy: () => ScrollStrategy;
+
+  /** Unique ID to be used by the autocomplete's combobox's input "aria-owns" property. */
+  private _id: string = `mat-autocomplete-trigger-${_uniqueAutocompleteTriggerIdCounter++}`;
 
   /** Old value of the native input. Used to work around issues with the `input` event on IE. */
   private _previousValue: string | number | null;
@@ -209,6 +217,9 @@ export class MatAutocompleteTrigger implements ControlValueAccessor, AfterViewIn
   get autocompleteDisabled(): boolean { return this._autocompleteDisabled; }
   set autocompleteDisabled(value: boolean) {
     this._autocompleteDisabled = coerceBooleanProperty(value);
+    if (this.autocomplete) {
+      this.autocomplete._disabled = this._autocompleteDisabled;
+    }
   }
 
   constructor(private _element: ElementRef<HTMLInputElement>, private _overlay: Overlay,
@@ -234,6 +245,8 @@ export class MatAutocompleteTrigger implements ControlValueAccessor, AfterViewIn
 
       this._isInsideShadowRoot = !!_getShadowRoot(this._element.nativeElement);
     }
+    this.autocomplete._inputId = this._id;
+    this.autocomplete._disabled = this._autocompleteDisabled;
   }
 
   ngOnChanges(changes: SimpleChanges) {

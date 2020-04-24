@@ -38,10 +38,16 @@ import {Subscription} from 'rxjs';
 
 
 /**
- * Autocomplete IDs need to be unique across components, so this counter exists outside of
- * the component definition.
+ * Autocomplete panel IDs need to be unique across components, so this counter exists
+ * outside of the component definition.
  */
 let _uniqueAutocompleteIdCounter = 0;
+
+/**
+ * Autocomplete combobox IDs need to be unique across components, so this counter exists
+ * outside of the component definition.
+ */
+let _uniqueAutocompleteComboboxIdCounter = 0;
 
 /** Event object that is emitted when an autocomplete option is selected. */
 export class MatAutocompleteSelectedEvent {
@@ -94,7 +100,11 @@ export function MAT_AUTOCOMPLETE_DEFAULT_OPTIONS_FACTORY(): MatAutocompleteDefau
   exportAs: 'matAutocomplete',
   inputs: ['disableRipple'],
   host: {
-    'class': 'mat-autocomplete'
+    'class': 'mat-autocomplete',
+    'role': 'combobox',
+    '[id]': 'comboboxId',
+    '[attr.aria-owns]': 'ariaOwnedIdList',
+    '[attr.aria-expanded]': '_disabled ? null : isOpen.toString()',
   },
   providers: [
     {provide: MAT_OPTION_PARENT_COMPONENT, useExisting: MatAutocomplete}
@@ -113,6 +123,11 @@ export class MatAutocomplete extends _MatAutocompleteMixinBase implements AfterC
   /** Whether the autocomplete panel is open. */
   get isOpen(): boolean { return this._isOpen && this.showPanel; }
   _isOpen: boolean = false;
+  _disabled: boolean = false;
+
+  get ariaOwnedIdList(): string {
+      return (this.isOpen ? this.id + " " : "") + this._inputId;
+  }
 
   // The @ViewChild query for TemplateRef here needs to be static because some code paths
   // lead to the overlay being created before change detection has finished for this component.
@@ -184,8 +199,13 @@ export class MatAutocomplete extends _MatAutocompleteMixinBase implements AfterC
   }
   _classList: {[key: string]: boolean} = {};
 
-  /** Unique ID to be used by autocomplete trigger's "aria-owns" property. */
+  /** Unique ID to be used by the combobox's input "aria-owns" property. */
+  _inputId: string | null = null;
+
+  /** Unique ID to be used by the combobox's option list "aria-owns" property. */
   id: string = `mat-autocomplete-${_uniqueAutocompleteIdCounter++}`;
+  /** Unique ID to be used by the combobox's input's "aria-owns" property. */
+  comboboxId: string = `mat-autocomplete-combobox-${_uniqueAutocompleteComboboxIdCounter++}`;
 
   constructor(
     private _changeDetectorRef: ChangeDetectorRef,
@@ -247,4 +267,3 @@ export class MatAutocomplete extends _MatAutocompleteMixinBase implements AfterC
   static ngAcceptInputType_autoActiveFirstOption: BooleanInput;
   static ngAcceptInputType_disableRipple: BooleanInput;
 }
-
